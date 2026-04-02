@@ -8,7 +8,7 @@ session = requests.Session()
 # =========================
 # 🧠 جلب العملات
 # =========================
-def get_all_coins(pages=2):
+def get_all_coins(pages=1):
     coins = []
 
     for page in range(1, pages + 1):
