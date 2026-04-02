@@ -1,14 +1,12 @@
 import requests
 import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
+import time
 
-# =========================
-# ⚡ Session أسرع
-# =========================
 session = requests.Session()
 
 # =========================
-# 🧠 جلب العملات (200 عملة)
+# 🧠 جلب العملات
 # =========================
 def get_all_coins(pages=2):
     coins = []
@@ -23,15 +21,21 @@ def get_all_coins(pages=2):
         }
 
         try:
-            data = session.get(url, params=params, timeout=10).json()
+            data = session.get(url, params=params, timeout=15)
+
+            if data.status_code != 200:
+                continue
+
+            data = data.json()
             coins.extend([c['id'] for c in data])
+
         except:
             continue
 
     return coins
 
 # =========================
-# 📊 جلب البيانات
+# 📊 بيانات العملة
 # =========================
 def get_data(coin_id):
     url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart"
@@ -43,7 +47,12 @@ def get_data(coin_id):
     }
 
     try:
-        data = session.get(url, params=params, timeout=10).json()
+        data = session.get(url, params=params, timeout=15)
+
+        if data.status_code != 200:
+            return None
+
+        data = data.json()
 
         if "prices" not in data:
             return None
@@ -56,7 +65,6 @@ def get_data(coin_id):
 
         df['high'] = df['price'].rolling(3).max()
         df['low'] = df['price'].rolling(3).min()
-        df['close'] = df['price']
 
         return df.dropna()
 
@@ -64,7 +72,7 @@ def get_data(coin_id):
         return None
 
 # =========================
-# 📉 VCP Detection
+# 📉 VCP
 # =========================
 def detect_vcp(df):
     if df is None or len(df) < 50:
@@ -83,22 +91,30 @@ def detect_vcp(df):
     vol2 = recent['volume'].iloc[10:20].mean()
     vol3 = recent['volume'].iloc[20:30].mean()
 
-    return (v1 > v2 > v3) and (vol1 > vol2 > vol3)
+    return v1 > v2 > v3 and vol1 > vol2 > vol3
 
 # =========================
-# 🔍 تحليل عملة واحدة
+# 🔍 تحليل عملة
 # =========================
 def analyze_coin(coin):
+    print(f"🔎 فحص: {coin}")
+
     df = get_data(coin)
+
     if detect_vcp(df):
+        print(f"🔥 فرصة VCP: {coin}")
         return coin
+
     return None
 
 # =========================
-# 🚀 Scan سريع جدًا
+# 🚀 Scan
 # =========================
 def scan():
-    coins = get_all_coins(pages=2)  # 200 عملة
+    coins = get_all_coins(pages=2)
+
+    print(f"\n🚀 عدد العملات: {len(coins)}")
+    print("⏳ جاري الفحص...\n")
 
     results = []
 
@@ -114,8 +130,17 @@ def scan():
 # =========================
 # ▶️ تشغيل
 # =========================
-coins = scan()
+if __name__ == "__main__":
+    coins = scan()
 
-print("🔥 أفضل عملات VCP:")
-for c in coins:
-    print(c)
+    print("\n====================")
+    print("🔥 أفضل عملات VCP:")
+    print("====================")
+
+    if not coins:
+        print("❌ مفيش فرص حالياً")
+    else:
+        for c in coins:
+            print("✔", c)
+
+    input("\nاضغط Enter للخروج...")
